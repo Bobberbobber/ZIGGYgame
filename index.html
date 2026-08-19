@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Outpost</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="game-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">+</span><span>NEON OUTPOST</span></div>
+      <div class="top-status"><span class="status-dot"></span><span id="statusText">SYSTEMS ONLINE</span></div>
+      <button class="icon-button" id="soundButton" aria-label="Toggle sound">◖</button>
+    </header>
+
+    <section class="game-layout">
+      <aside class="sidebar left-panel">
+        <div class="eyebrow">OPERATOR PROFILE</div>
+        <div class="operator-block">
+          <div class="avatar">Z</div>
+          <div><h1>ZIGGY</h1><p>OUTPOST RUNNER</p></div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label"><span>LEVEL</span><strong id="levelValue">01</strong></div>
+          <div class="xp-track"><div id="xpBar" class="xp-fill"></div></div>
+          <div class="stat-label muted"><span id="xpValue">0 / 100 XP</span><span id="perkValue">+0 PERKS</span></div>
+        </div>
+        <div class="side-divider"></div>
+        <div class="eyebrow">LOADOUT</div>
+        <div class="loadout-item active"><span class="loadout-icon">⊹</span><div><b>PULSE RIFLE</b><small id="damageValue">DAMAGE 18</small></div><span class="loadout-key">LMB</span></div>
+        <div class="loadout-item"><span class="loadout-icon">⌁</span><div><b>CORE FIELD</b><small id="fireRateValue">FIRE RATE 240 RPM</small></div></div>
+        <button id="towerButton" class="tower-button"><span>＋</span><div><b>BUILD SENTRY</b><small id="towerValue">2 CHARGES READY</small></div></button>
+        <div class="side-divider"></div>
+        <div class="eyebrow">CONTROLS</div>
+        <div class="controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><small>MOVE</small></div>
+        <div class="controls"><span><kbd>SPACE</kbd></span><small>DASH</small></div>
+        <div class="controls"><span><kbd>LMB</kbd></span><small>FIRE</small></div>
+        <div class="controls"><span><kbd>T</kbd> + <kbd>LMB</kbd></span><small>BUILD</small></div>
+      </aside>
+
+      <section class="arena-wrap">
+        <div class="arena-head"><div><span class="eyebrow">SECTOR 07 / LIVE FEED</span><h2 id="waveTitle">WAVE 01</h2></div><div class="wave-counter"><span class="muted">THREAT LEVEL</span><strong id="threatValue">LOW</strong><small id="bossAlert"></small></div></div>
+        <div class="canvas-frame"><canvas id="gameCanvas"></canvas><div class="reticle-hint">MOVE TO AIM <span>•</span> CLICK / TAP TO FIRE <span>•</span> T + CLICK TO BUILD</div><div id="mobileControls" class="mobile-controls"><div id="joystick" class="joystick"><span></span></div><button id="mobileFire" class="mobile-fire">FIRE</button></div></div>
+        <div class="arena-foot"><div><span class="muted">NEXT WAVE</span><strong id="nextWave">INCOMING</strong></div><div class="wave-progress"><span id="enemyCount">0 HOSTILES</span><div class="mini-track"><div id="waveBar"></div></div></div><div class="core-readout"><span class="core-dot"></span><span>CORE INTEGRITY</span><strong id="coreValue">100%</strong></div></div>
+      </section>
+
+      <aside class="sidebar right-panel">
+        <div class="eyebrow">RUN TELEMETRY</div>
+        <div class="big-stat"><span>WAVE</span><strong id="waveValue">01</strong></div>
+        <div class="telemetry-row"><span>HOSTILES CLEARED</span><strong id="killsValue">0</strong></div>
+        <div class="telemetry-row"><span>HIGH SCORE</span><strong id="scoreValue">00000</strong></div>
+        <div class="telemetry-row"><span>SENTRY GRID</span><strong id="sentryValue">0 / 4</strong></div>
+        <div class="side-divider"></div>
+        <div class="eyebrow">UPGRADE QUEUE</div>
+        <p class="upgrade-note" id="upgradeNote">Clear hostiles to earn XP.<br />Your next upgrade is waiting.</p>
+        <div id="upgradeOptions" class="upgrade-options"></div>
+        <div class="side-divider"></div>
+        <div class="eyebrow">FIELD LOG</div>
+        <div id="log" class="field-log"><p><span>00:00</span> Outpost link established.</p><p><span>00:01</span> Hostile signal detected.</p></div>
+      </aside>
+    </section>
+  </main>
+  <div id="startOverlay" class="overlay"><div class="overlay-card"><div class="eyebrow">MISSION BRIEF / 001</div><h2>HOLD THE<br /><em>LINE.</em></h2><p>Keep the reactor alive. Clear each wave, collect XP, and evolve your pulse rifle between assaults. Every fifth wave brings a boss.</p><button id="startButton" class="primary-button">START RUN <span>→</span></button><small>WASD / touch pad to move · mouse / touch to aim · click / FIRE to shoot · T to build</small></div></div>
+  <div id="gameOverOverlay" class="overlay hidden"><div class="overlay-card"><div class="eyebrow">SIGNAL LOST</div><h2>OUTPOST<br /><em>FALLEN.</em></h2><p id="finalScore">You held the line for 0 waves.</p><button id="restartButton" class="primary-button">RESTART RUN <span>↻</span></button></div></div>
+  <script src="game.js"></script>
+</body>
+</html>
