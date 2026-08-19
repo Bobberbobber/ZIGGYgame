@@ -45,7 +45,7 @@
 
       <section class="arena-wrap">
         <div class="arena-head"><div><span class="eyebrow">SECTOR 07 / LIVE FEED</span><h2 id="waveTitle">WAVE 01</h2></div><div class="wave-counter"><span class="muted">THREAT LEVEL</span><strong id="threatValue">LOW</strong><small id="bossAlert"></small></div></div>
-        <div class="canvas-frame"><canvas id="gameCanvas"></canvas><div class="reticle-hint">MOVE TO AIM <span>•</span> CLICK / TAP TO FIRE <span>•</span> B + CLICK TO BUILD</div><div id="mobileControls" class="mobile-controls"><div id="joystick" class="joystick"><span></span></div><button id="mobileFire" class="mobile-fire">FIRE</button></div></div>
+        <div class="canvas-frame"><canvas id="gameCanvas"></canvas><div id="upgradeOverlay" class="arena-upgrade hidden"><div class="eyebrow">LEVEL UP / CHOOSE ONE</div><h3>EVOLVE YOUR LOADOUT</h3><div id="upgradeOptions" class="upgrade-options"></div></div><div class="reticle-hint">MOVE TO AIM <span>•</span> CLICK / TAP TO FIRE <span>•</span> B + CLICK TO BUILD</div><div id="mobileControls" class="mobile-controls"><div id="joystick" class="joystick"><span></span></div><button id="mobileFire" class="mobile-fire">FIRE</button></div></div>
         <div class="arena-foot"><div><span class="muted">NEXT WAVE</span><strong id="nextWave">INCOMING</strong></div><div class="wave-progress"><span id="enemyCount">0 HOSTILES</span><div class="mini-track"><div id="waveBar"></div></div></div><div class="core-readout"><span class="core-dot"></span><span>CORE INTEGRITY</span><strong id="coreValue">100%</strong></div></div>
       </section>
 
@@ -58,14 +58,13 @@
         <div class="side-divider"></div>
         <div class="eyebrow">UPGRADE QUEUE</div>
         <p class="upgrade-note" id="upgradeNote">Clear hostiles to earn XP.<br />Your next upgrade is waiting.</p>
-        <div id="upgradeOptions" class="upgrade-options"></div>
         <div class="side-divider"></div>
         <div class="eyebrow">FIELD LOG</div>
         <div id="log" class="field-log"><p><span>00:00</span> Outpost link established.</p><p><span>00:01</span> Hostile signal detected.</p></div>
       </aside>
     </section>
   </main>
-  <div id="startOverlay" class="overlay"><div class="overlay-card"><div class="eyebrow">MISSION BRIEF / 001</div><h2>HOLD THE<br /><em>LINE.</em></h2><p>Keep the reactor alive. Clear each wave, collect coins and XP, and evolve your pulse rifle or sentry grid between assaults. Every fifth wave brings a boss.</p><button id="startButton" class="primary-button">START RUN <span>→</span></button><small>WASD / touch pad to move · mouse / touch to aim · click / FIRE to shoot · SPACE to dash · B or T to build</small></div></div>
+  <div id="startOverlay" class="overlay"><div class="overlay-card"><div class="eyebrow">MISSION BRIEF / 001</div><h2>HOLD THE<br /><em>LINE.</em></h2><p>Keep the reactor alive. Clear each wave, collect coins and XP, and evolve your pulse rifle or sentry grid between assaults. Every fifth wave brings a boss.</p><button id="startButton" class="primary-button">PLAY <span>→</span></button><small>WASD / touch pad to move · mouse / touch to aim · click / FIRE to shoot · SPACE to dash · B or T to build</small><button id="homeButton" class="home-button">HOME</button></div></div>
   <div id="gameOverOverlay" class="overlay hidden"><div class="overlay-card"><div class="eyebrow">SIGNAL LOST</div><h2>OUTPOST<br /><em>FALLEN.</em></h2><p id="finalScore">You held the line for 0 waves.</p><button id="restartButton" class="primary-button">RESTART RUN <span>↻</span></button></div></div>
   <script src="game.js"></script>
 </body>
