@@ -28,6 +28,7 @@
           <div class="stat-label"><span>LEVEL</span><strong id="levelValue">01</strong></div>
           <div class="xp-track"><div id="xpBar" class="xp-fill"></div></div>
           <div class="stat-label muted"><span id="xpValue">0 / 100 XP</span><span id="perkValue">+0 PERKS</span></div>
+          <div class="stamina-label"><span>STAMINA</span><strong id="staminaValue">5.0s</strong></div><div class="stamina-track"><div id="staminaBar" class="stamina-fill"></div></div>
         </div>
         <div class="side-divider"></div>
         <div class="eyebrow">LOADOUT</div>
@@ -39,6 +40,7 @@
         <div class="eyebrow">CONTROLS</div>
         <div class="controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><small>MOVE</small></div>
         <div class="controls"><span><kbd>SPACE</kbd></span><small>DASH</small></div>
+        <div class="controls"><span><kbd>SHIFT</kbd></span><small>SPRINT</small></div>
         <div class="controls"><span><kbd>LMB</kbd></span><small>FIRE</small></div>
         <div class="controls"><span><kbd>B</kbd> / <kbd>T</kbd> + <kbd>LMB</kbd></span><small>BUILD</small></div>
       </aside>
@@ -64,7 +66,7 @@
       </aside>
     </section>
   </main>
-  <div id="startOverlay" class="overlay"><div class="overlay-card"><div class="eyebrow">MISSION BRIEF / 001</div><h2>HOLD THE<br /><em>LINE.</em></h2><p>Keep the reactor alive. Clear each wave, collect coins and XP, and evolve your pulse rifle or sentry grid between assaults. Every fifth wave brings a boss.</p><button id="startButton" class="primary-button">PLAY <span>→</span></button><small>WASD / touch pad to move · mouse / touch to aim · click / FIRE to shoot · SPACE to dash · B or T to build</small><button id="homeButton" class="home-button">HOME</button></div></div>
+  <div id="startOverlay" class="overlay"><div class="overlay-card"><div class="eyebrow">MISSION BRIEF / 001</div><h2>HOLD THE<br /><em>LINE.</em></h2><p>Keep the reactor alive. Clear each wave, collect coins and XP, and evolve your pulse rifle or sentry grid between assaults. Every fifth wave brings a boss.</p><button id="startButton" class="primary-button">PLAY <span>→</span></button><small>WASD / touch pad to move · mouse / touch to aim · click / FIRE to shoot · SHIFT to sprint · SPACE to dash · B or T to build</small><button id="homeButton" class="home-button">HOME</button></div></div>
   <div id="gameOverOverlay" class="overlay hidden"><div class="overlay-card"><div class="eyebrow">SIGNAL LOST</div><h2>OUTPOST<br /><em>FALLEN.</em></h2><p id="finalScore">You held the line for 0 waves.</p><button id="restartButton" class="primary-button">RESTART RUN <span>↻</span></button></div></div>
   <script src="game.js"></script>
 </body>

@@ -17,6 +17,7 @@ const state = {
   fireCooldown: 0,
   spawnTimer: 0,
   dashCooldown: 0,
+  stamina: 5,
   sound: true,
   buildMode: false,
   removeMode: false,
@@ -95,6 +96,9 @@ function updateUI() {
   setText("killsValue", state.totalKills);
   setText("scoreValue", String(state.score).padStart(5, "0"));
   setText("coreValue", `${Math.max(0, Math.round(state.core))}%`);
+  setText("staminaValue", `${state.stamina.toFixed(1)}s`);
+  $("staminaBar").style.width = `${state.stamina / 5 * 100}%`;
+  $("staminaBar").classList.toggle("empty", state.stamina <= 0);
   setText("coinValue", `${state.coins} COINS`);
   setText("damageValue", `DAMAGE ${Math.round(state.upgrades.damage)}`);
   setText(
@@ -143,6 +147,7 @@ function reset() {
     fireCooldown: 0,
     spawnTimer: 0,
     dashCooldown: 0,
+    stamina: 5,
     buildMode: false,
     removeMode: false,
     bossSpawned: false,
@@ -579,10 +584,14 @@ function update(dt) {
   }
   let dx = (state.keys.d ? 1 : 0) - (state.keys.a ? 1 : 0) + state.touchMove.x,
     dy = (state.keys.s ? 1 : 0) - (state.keys.w ? 1 : 0) + state.touchMove.y;
+  const sprinting = state.keys.shift && state.stamina > 0 && (dx || dy);
+  if (sprinting) state.stamina = Math.max(0, state.stamina - dt);
+  else state.stamina = Math.min(5, state.stamina + dt * 0.8);
   if (dx || dy) {
     const len = Math.hypot(dx, dy);
-    p.x += (dx / len) * state.upgrades.speed * 60 * dt;
-    p.y += (dy / len) * state.upgrades.speed * 60 * dt;
+    const movementSpeed = state.upgrades.speed * (sprinting ? 1.5 : 1);
+    p.x += (dx / len) * movementSpeed * 60 * dt;
+    p.y += (dy / len) * movementSpeed * 60 * dt;
   }
   p.x = Math.max(22, Math.min(w - 22, p.x));
   p.y = Math.max(22, Math.min(h - 22, p.y));
@@ -647,9 +656,6 @@ function update(dt) {
         towerFire(tower, target);
     }
   });
-  state.towers = state.towers.filter(
-    (tower) => tower.age < 20 * state.upgrades.towerLife,
-  );
   state.enemies.forEach((e) => {
     const angle = Math.atan2(p.y - e.y, p.x - e.x),
       distance = Math.hypot(p.x - e.x, p.y - e.y);
@@ -663,14 +669,17 @@ function update(dt) {
         e.x += Math.cos(angle) * e.speed * 60 * dt;
         e.y += Math.sin(angle) * e.speed * 60 * dt;
       }
-    } else if (distance < e.r + p.r || (e.type === "boss" && distance < 100))
-      state.core -=
-        (e.type === "boss" ? 14 : 9) * (1 - state.upgrades.defense) * dt;
-    else {
-      e.x += Math.cos(angle) * e.speed * 60 * dt;
-      e.y += Math.sin(angle) * e.speed * 60 * dt;
+    } else {
+      const targetTower = state.towers.find((tower) => Math.hypot(tower.x - e.x, tower.y - e.y) < e.r + 18);
+      if (targetTower) targetTower.hp -= (e.type === "boss" ? 24 : 12) * dt;
+      else if (distance < e.r + p.r || (e.type === "boss" && distance < 100)) state.core -= (e.type === "boss" ? 14 : 9) * (1 - state.upgrades.defense) * dt;
+      else {
+        e.x += Math.cos(angle) * e.speed * 60 * dt;
+        e.y += Math.sin(angle) * e.speed * 60 * dt;
+      }
     }
   });
+  state.towers = state.towers.filter((tower) => tower.hp > 0);
   for (let i = state.enemies.length - 1; i >= 0; i--) {
     const enemy = state.enemies[i];
     for (let j = state.bullets.length - 1; j >= 0; j--) {
@@ -767,7 +776,7 @@ function draw() {
     ctx.fillRect(
       t.x - 16,
       t.y - 22,
-      32 * Math.max(0, 1 - t.age / (20 * state.upgrades.towerLife)),
+      32 * Math.max(0, t.hp / t.maxHp),
       3,
     );
     ctx.save();
