@@ -29,13 +29,15 @@
           <div class="xp-track"><div id="xpBar" class="xp-fill"></div></div>
           <div class="stat-label muted"><span id="xpValue">0 / 100 XP</span><span id="perkValue">+0 PERKS</span></div>
           <div class="stamina-label"><span>STAMINA</span><strong id="staminaValue">5.0s</strong></div><div class="stamina-track"><div id="staminaBar" class="stamina-fill"></div></div>
+          <div class="stamina-label"><span>SHIELD</span><strong id="shieldValue">50%</strong></div><div class="stamina-track"><div id="shieldBar" class="shield-fill"></div></div>
+          <div class="stamina-label"><span>OPERATOR HP</span><strong id="playerHpValue">100%</strong></div><div class="stamina-track"><div id="playerHpBar" class="player-hp-fill"></div></div>
         </div>
         <div class="side-divider"></div>
         <div class="eyebrow">LOADOUT</div>
-        <div class="loadout-item active"><span class="loadout-icon">⊹</span><div><b>PULSE RIFLE</b><small id="damageValue">DAMAGE 18</small></div><span class="loadout-key">LMB</span></div>
+        <div class="loadout-item active"><span id="weaponIcon" class="loadout-icon">⊹</span><div><b id="weaponValue">PULSE RIFLE</b><small id="damageValue">DAMAGE 18</small></div><span class="loadout-key">LMB</span></div>
         <div class="loadout-item"><span class="loadout-icon">⌁</span><div><b>CORE FIELD</b><small id="fireRateValue">FIRE RATE 240 RPM</small></div></div>
         <button id="towerButton" class="tower-button"><span>＋</span><div><b>BUILD SENTRY</b><small id="towerValue">0 SLOTS OPEN</small></div><kbd>B</kbd></button>
-        <div class="shop-panel"><div class="eyebrow">FIELD SHOP</div><div class="coin-readout"><span>◈</span><strong id="coinValue">0 COINS</strong></div><button id="buyTowerButton" class="shop-button"><b>PLACE TURRET</b><small id="shopCost">FREE</small></button><button id="destroyTowerButton" class="shop-button danger"><b>REMOVE TURRET</b><small>SELECT ONE TO REMOVE</small></button></div>
+        <div class="shop-panel"><div class="eyebrow">FIELD SHOP</div><div class="coin-readout"><span>◈</span><strong id="coinValue">0 COINS</strong></div><button id="buyTowerButton" class="shop-button"><b>PLACE SENTRY</b><small id="shopCost">FREE</small></button><button id="buyTeslaButton" class="shop-button tesla-shop"><b>PLACE TESLA TOWER</b><small>LOCKED</small></button><button id="destroyTowerButton" class="shop-button danger"><b>REMOVE TOWER</b><small>SELECT ONE TO REMOVE</small></button></div>
         <div class="side-divider"></div>
         <div class="eyebrow">CONTROLS</div>
         <div class="controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><small>MOVE</small></div>
@@ -56,7 +58,7 @@
         <div class="big-stat"><span>WAVE</span><strong id="waveValue">01</strong></div>
         <div class="telemetry-row"><span>HOSTILES CLEARED</span><strong id="killsValue">0</strong></div>
         <div class="telemetry-row"><span>HIGH SCORE</span><strong id="scoreValue">00000</strong></div>
-        <div class="telemetry-row"><span>SENTRY GRID</span><strong id="sentryValue">0 / 4</strong></div>
+        <div class="telemetry-row"><span>TOWER GRID</span><strong id="sentryValue">0 / UNLIMITED</strong></div>
         <div class="side-divider"></div>
         <div class="eyebrow">UPGRADE QUEUE</div>
         <p class="upgrade-note" id="upgradeNote">Clear hostiles to earn XP.<br />Your next upgrade is waiting.</p>

@@ -11,6 +11,13 @@ const state = {
   score: 0,
   coins: 0,
   core: 100,
+  playerHp: 100,
+  playerMaxHp: 100,
+  shield: 50,
+  shieldMax: 50,
+  shieldRechargeDelay: 2.5,
+  shieldRechargeRate: 18,
+  shieldRechargeTimer: 0,
   level: 1,
   xp: 0,
   nextXp: 100,
@@ -24,6 +31,7 @@ const state = {
   sound: true,
   buildMode: false,
   removeMode: false,
+  pendingTowerType: "sentry",
   bossSpawned: false,
   keys: {},
   mouse: { x: 0, y: 0, down: false },
@@ -53,6 +61,7 @@ const state = {
     defense: 0,
     magnet: 0,
     turretLimit: 2,
+    shieldCapacity: 50,
     grenadeRadius: 58,
     grenadeDamage: 65,
     grenadeCooldown: 2.5,
@@ -111,10 +120,17 @@ function updateUI() {
   setText("killsValue", state.totalKills);
   setText("scoreValue", String(state.score).padStart(5, "0"));
   setText("coreValue", `${Math.max(0, Math.round(state.core))}%`);
+  setText("playerHpValue", `${Math.max(0, Math.round(state.playerHp))}%`);
+  setText("shieldValue", `${Math.max(0, Math.round(state.shield))}%`);
+  $("playerHpBar").style.width = `${Math.max(0, state.playerHp / state.playerMaxHp * 100)}%`;
+  $("shieldBar").style.width = `${Math.max(0, state.shield / state.shieldMax * 100)}%`;
   setText("staminaValue", `${state.stamina.toFixed(1)}s`);
   $("staminaBar").style.width = `${state.stamina / 5 * 100}%`;
   $("staminaBar").classList.toggle("empty", state.stamina <= 0);
   setText("coinValue", `${state.coins} COINS`);
+  const profile = weaponProfiles[state.weapon] || weaponProfiles["Pulse Rifle"];
+  setText("weaponValue", state.weapon.toUpperCase());
+  $("weaponIcon").style.color = profile.color;
   setText("damageValue", `DAMAGE ${Math.round(state.upgrades.damage)}`);
   setText(
     "fireRateValue",
@@ -125,15 +141,18 @@ function updateUI() {
     `${Math.min(100, (state.waveKills / (4 + state.wave * 2)) * 100)}%`;
   setText(
     "sentryValue",
-    `${state.towers.length} / ${state.upgrades.turretLimit}`,
+    `${state.towers.length} / UNLIMITED`,
   );
   setText(
     "towerValue",
-    state.removeMode
-      ? "CLICK TO REMOVE"
-      : `${state.upgrades.turretLimit} MAX / 20 SEC`,
+    state.removeMode ? "CLICK TO REMOVE" : "UNLIMITED / COIN GATED",
   );
   setText("shopCost", state.towers.length < 2 ? "FREE" : "100 COINS");
+  const teslaButton = $("buyTeslaButton");
+  if (teslaButton) {
+    teslaButton.disabled = !state.structures.tesla;
+    teslaButton.querySelector("small").textContent = state.structures.tesla ? "150 COINS" : "LOCKED";
+  }
   const threat =
     state.wave % 5 === 0
       ? "BOSS"
@@ -159,6 +178,13 @@ function reset() {
     xp: 0,
     nextXp: 100,
     core: 100,
+    playerHp: 100,
+    playerMaxHp: 100,
+    shield: 50,
+    shieldMax: 50,
+    shieldRechargeDelay: 2.5,
+    shieldRechargeRate: 18,
+    shieldRechargeTimer: 0,
     fireCooldown: 0,
     grenadeCooldown: 0,
     screenShake: 0,
@@ -168,6 +194,7 @@ function reset() {
     stamina: 5,
     buildMode: false,
     removeMode: false,
+    pendingTowerType: "sentry",
     bossSpawned: false,
     bullets: [],
     grenades: [],
@@ -194,6 +221,7 @@ function reset() {
       defense: 0,
       magnet: 0,
       turretLimit: 2,
+      shieldCapacity: 50,
       grenadeRadius: 58,
       grenadeDamage: 65,
       grenadeCooldown: 2.5,
@@ -246,6 +274,28 @@ const upgradePool = [
     "Defense reduces incoming damage",
     "Common",
     () => (state.upgrades.defense += 0.18),
+  ],
+  [
+    "SHIELD CAPACITY",
+    "Energy shield capacity +25",
+    "Common",
+    () => {
+      state.upgrades.shieldCapacity += 25;
+      state.shieldMax += 25;
+      state.shield = state.shieldMax;
+    },
+  ],
+  [
+    "SHIELD RECHARGE",
+    "Shield recharge rate +8 per second",
+    "Uncommon",
+    () => (state.shieldRechargeRate += 8),
+  ],
+  [
+    "QUICK SHIELD",
+    "Shield recharge delay -0.5 seconds",
+    "Uncommon",
+    () => (state.shieldRechargeDelay = Math.max(0.7, state.shieldRechargeDelay - 0.5)),
   ],
   [
     "REPAIR NANITES",
@@ -355,6 +405,10 @@ const upgradePool = [
   ["ROCKET LAUNCHER", "Slow, explosive, high-damage shots", "Epic", () => (state.weapon = "Rocket Launcher")],
   ["MINIGUN", "Very fast fire rate with light damage", "Epic", () => { state.weapon = "Minigun"; state.upgrades.fireRate += 360; state.upgrades.damage = Math.max(8, state.upgrades.damage - 4); }],
   ["LASER RIFLE", "Continuous piercing beam", "Legendary", () => (state.weapon = "Laser Rifle")],
+  ["SHOTGUN", "Seven close-range pellets with heavy spread", "Rare", () => (state.weapon = "Shotgun")],
+  ["RAILGUN", "Piercing rounds travel straight through hostiles", "Epic", () => (state.weapon = "Railgun")],
+  ["TESLA COIL GUN", "Chain lightning bounces between three hostiles", "Epic", () => (state.weapon = "Tesla Coil Gun")],
+  ["FLAMETHROWER", "Hold fire to burn enemies in a cone", "Rare", () => { state.weapon = "Flamethrower"; state.upgrades.element = "fire"; }],
   ["FIRE CORE", "Hits burn enemies over time", "Rare", () => { state.upgrades.element = "fire"; state.upgrades.elementPower++; }],
   ["ICE CORE", "Hits slow enemies with frost", "Rare", () => { state.upgrades.element = "ice"; state.upgrades.elementPower++; }],
   ["POISON CORE", "Poisoned enemies take 30% more damage", "Epic", () => { state.upgrades.element = "poison"; state.upgrades.elementPower++; }],
@@ -490,11 +544,60 @@ function burst(x, y, color, count = 8) {
     });
 }
 const weaponProfiles = {
-  "Pulse Rifle": { rate: 1, damage: 1, color: "#c7f36b", size: 3 },
-  "Rocket Launcher": { rate: .28, damage: 4, color: "#ff8c57", size: 6 },
-  Minigun: { rate: 3.4, damage: .45, color: "#c7f36b", size: 2 },
-  "Laser Rifle": { rate: 8, damage: .25, color: "#6be4d8", size: 2 },
+  "Pulse Rifle": { rate: 1, damage: 1, color: "#c7f36b", size: 3, shape: "rifle" },
+  "Rocket Launcher": { rate: .28, damage: 4, color: "#ff8c57", size: 6, shape: "rocket" },
+  Minigun: { rate: 3.4, damage: .45, color: "#c7f36b", size: 2, shape: "minigun" },
+  "Laser Rifle": { rate: 8, damage: .25, color: "#6be4d8", size: 2, shape: "laser" },
+  Shotgun: { rate: .55, damage: .65, color: "#ffcf68", size: 3, shape: "shotgun" },
+  Railgun: { rate: .22, damage: 3.5, color: "#62a7ff", size: 5, shape: "railgun" },
+  "Tesla Coil Gun": { rate: .7, damage: 1.4, color: "#d58cff", size: 4, shape: "tesla" },
+  Flamethrower: { rate: 7, damage: .24, color: "#ff8c57", size: 3, shape: "flame" },
 };
+function fireFlamethrower() {
+  const range = 185;
+  state.enemies.forEach((enemy) => {
+    const distance = Math.hypot(enemy.x - state.player.x, enemy.y - state.player.y);
+    const angle = Math.atan2(enemy.y - state.player.y, enemy.x - state.player.x);
+    const delta = Math.atan2(Math.sin(angle - state.player.angle), Math.cos(angle - state.player.angle));
+    if (distance < range && Math.abs(delta) < 0.48) {
+      enemy.hp -= state.upgrades.damage * 0.24;
+      enemy.burn = Math.max(enemy.burn, 2 + state.upgrades.elementPower);
+    }
+  });
+  burst(state.player.x + Math.cos(state.player.angle) * 70, state.player.y + Math.sin(state.player.angle) * 70, "#ff8c57", 5);
+}
+function defeatEnemy(enemy) {
+  const index = state.enemies.indexOf(enemy);
+  if (index < 0) return;
+  state.enemies.splice(index, 1);
+  state.waveKills++;
+  state.totalKills++;
+  const reward = enemy.elite ? 50 : 10;
+  state.coinsOnGround.push({ x: enemy.x, y: enemy.y, value: reward, life: 30 });
+  state.score += enemy.type === "boss" ? 1200 : enemy.type === "brute" ? 250 : 100;
+  addXp(enemy.xp);
+  burst(enemy.x, enemy.y, enemy.color, enemy.type === "boss" ? 35 : 14);
+  log(`Hostile cleared. ${reward} coin pickup dropped.`);
+}
+function fireTeslaCoil() {
+  const target = state.enemies
+    .map((enemy) => ({ enemy, distance: Math.hypot(enemy.x - state.mouse.x, enemy.y - state.mouse.y) }))
+    .sort((a, b) => a.distance - b.distance)[0]?.enemy;
+  if (!target || Math.hypot(target.x - state.player.x, target.y - state.player.y) > 360) return;
+  const chain = [target];
+  while (chain.length < 3) {
+    const next = state.enemies
+      .filter((enemy) => !chain.includes(enemy))
+      .sort((a, b) => Math.hypot(a.x - chain.at(-1).x, a.y - chain.at(-1).y) - Math.hypot(b.x - chain.at(-1).x, b.y - chain.at(-1).y))[0];
+    if (!next || Math.hypot(next.x - chain.at(-1).x, next.y - chain.at(-1).y) > 135) break;
+    chain.push(next);
+  }
+  chain.forEach((enemy, index) => {
+    enemy.hp -= state.upgrades.damage * 1.4 * (1 - index * 0.2);
+    burst(enemy.x, enemy.y, "#d58cff", 7);
+  });
+  state.shockwaves.push({ x: target.x, y: target.y, radius: 12, maxRadius: 42, life: .8, color: "#d58cff" });
+}
 function explode(x, y, radius, damage, source = "grenade") {
   state.shockwaves.push({ x, y, radius: 8, maxRadius: radius, life: 1, color: source === "grenade" ? "#ff8c57" : "#d58cff" });
   burst(x, y, source === "grenade" ? "#ff8c57" : "#d58cff", 22);
@@ -518,19 +621,34 @@ function shoot(
   source = "player",
 ) {
   const profile = weaponProfiles[state.weapon] || weaponProfiles["Pulse Rifle"];
-  const count = source === "player" ? (state.weapon === "Rocket Launcher" ? 1 : state.upgrades.multishot) : 1;
+  if (source === "player" && state.weapon === "Flamethrower") {
+    fireFlamethrower();
+    sound("flame");
+    return;
+  }
+  if (source === "player" && state.weapon === "Tesla Coil Gun") {
+    fireTeslaCoil();
+    sound("tesla");
+    return;
+  }
+  const count = source === "player"
+    ? state.weapon === "Shotgun" ? 7 : 1
+    : 1;
+  const spread = state.weapon === "Shotgun" ? 0.16 : 0;
   for (let i = 0; i < count; i++) {
-    const shotAngle = angle + (i - (count - 1) / 2) * 0.11;
+    const shotAngle = angle + (i - (count - 1) / 2) * spread;
     state.bullets.push({
       x: x + Math.cos(shotAngle) * 18,
       y: y + Math.sin(shotAngle) * 18,
-      vx: Math.cos(shotAngle) * 8,
-      vy: Math.sin(shotAngle) * 8,
-      life: 1.1,
-      damage,
+      vx: Math.cos(shotAngle) * (state.weapon === "Railgun" ? 14 : 8),
+      vy: Math.sin(shotAngle) * (state.weapon === "Railgun" ? 14 : 8),
+      life: state.weapon === "Shotgun" ? .45 : state.weapon === "Railgun" ? .9 : 1.1,
+      damage: damage * profile.damage * (state.weapon === "Shotgun" ? 0.65 : 1),
       source,
       color: source === "tower" ? "#6be4d8" : profile.color,
       size: source === "tower" ? 2 : profile.size,
+      pierce: state.weapon === "Railgun",
+      hitEnemies: [],
       trail: [],
       homing:
         (source === "player" && state.upgrades.homing > 0) ||
@@ -538,7 +656,7 @@ function shoot(
     });
   }
   state.muzzleFlash = .12;
-  sound(source === "tower" ? "turret" : state.weapon === "Rocket Launcher" ? "rocket" : "shot");
+  sound(source === "tower" ? "turret" : state.weapon === "Rocket Launcher" ? "rocket" : state.weapon === "Railgun" ? "rail" : "shot");
 }
 function toggleBuildMode() {
   state.buildMode = !state.buildMode;
@@ -552,13 +670,10 @@ function toggleBuildMode() {
       : "Clear hostiles to earn XP.",
   );
 }
-function buildTower(x, y) {
-  if (
-    state.towers.length >= state.upgrades.turretLimit ||
-    Math.hypot(x - state.player.x, y - state.player.y) < 65
-  )
+function buildTower(x, y, type = state.pendingTowerType) {
+  if (Math.hypot(x - state.player.x, y - state.player.y) < 65)
     return;
-  const cost = state.towers.length < 2 ? 0 : 100;
+  const cost = type === "tesla" ? 150 : state.towers.length < 2 ? 0 : 100;
   if (state.coins < cost) {
     log("Not enough coins for another sentry.");
     return;
@@ -572,20 +687,27 @@ function buildTower(x, y) {
     age: 0,
     cooldown: 0,
     angle: 0,
+    type,
   });
   state.buildMode = false;
   towerButton.classList.remove("selected");
   sound("build");
-  log(`${cost ? "Paid 100 coins. " : ""}Sentry deployed for 20 seconds.`);
+  log(`${cost ? `Paid ${cost} coins. ` : ""}${type === "tesla" ? "Tesla tower" : "Sentry"} deployed.`);
   updateUI();
 }
-function buyTower() {
-  if (state.towers.length >= state.upgrades.turretLimit) return;
+function buyTower(type = "sentry") {
+  if (type === "tesla" && !state.structures.tesla) {
+    log("Tesla Node upgrade required.");
+    return;
+  }
+  state.pendingTowerType = type;
   toggleBuildMode();
   log(
-    state.towers.length < 2
-      ? "Sentry deployment is free. Choose a point."
-      : "Sentry costs 100 coins. Choose a deployment point.",
+    type === "tesla"
+      ? "Tesla tower costs 150 coins. Choose a deployment point."
+      : state.towers.length < 2
+        ? "Sentry deployment is free. Choose a point."
+        : "Sentry costs 100 coins. Choose a deployment point.",
   );
   updateUI();
 }
@@ -628,6 +750,14 @@ function towerFire(tower, target) {
   );
   tower.cooldown = 0.8 / state.upgrades.towerRate;
 }
+function damagePlayer(amount) {
+  const reducedDamage = amount * (1 - state.upgrades.defense);
+  const shieldDamage = Math.min(state.shield, reducedDamage);
+  state.shield -= shieldDamage;
+  state.playerHp = Math.max(0, state.playerHp - (reducedDamage - shieldDamage));
+  state.shieldRechargeTimer = state.shieldRechargeDelay;
+  burst(state.player.x, state.player.y, shieldDamage ? "#6be4d8" : "#ff5864", 5);
+}
 function update(dt) {
   const w = canvas.clientWidth,
     h = canvas.clientHeight,
@@ -638,6 +768,9 @@ function update(dt) {
   state.muzzleFlash = Math.max(0, state.muzzleFlash - dt);
   state.screenShake = Math.max(0, state.screenShake - dt);
   state.spawnTimer -= dt;
+  state.shieldRechargeTimer = Math.max(0, state.shieldRechargeTimer - dt);
+  if (state.shieldRechargeTimer === 0)
+    state.shield = Math.min(state.shieldMax, state.shield + state.shieldRechargeRate * dt);
   if (state.wave % 5 === 0 && !state.bossSpawned) {
     spawn("boss");
     state.bossSpawned = true;
@@ -733,6 +866,17 @@ function update(dt) {
   state.towers.forEach((tower) => {
     tower.age += dt;
     tower.cooldown -= dt;
+    if (tower.type === "tesla") {
+      if (tower.cooldown <= 0) {
+        const targets = state.enemies.filter((enemy) => Math.hypot(enemy.x - tower.x, enemy.y - tower.y) < state.upgrades.towerRange);
+        targets.forEach((enemy) => {
+          enemy.hp -= state.upgrades.damage * 0.7 * state.upgrades.towerDamage;
+          burst(enemy.x, enemy.y, "#d58cff", 4);
+        });
+        tower.cooldown = 5 / state.upgrades.towerRate;
+      }
+      return;
+    }
     if (tower.cooldown <= 0) {
       const target = state.enemies
         .slice()
@@ -765,7 +909,10 @@ function update(dt) {
     } else {
       const targetTower = state.towers.find((tower) => Math.hypot(tower.x - e.x, tower.y - e.y) < e.r + 18);
       if (targetTower) targetTower.hp -= (e.type === "boss" ? 24 : 12) * dt;
-      else if (distance < e.r + p.r || (e.type === "boss" && distance < 100)) state.core -= (e.type === "boss" ? 14 : 9) * (1 - state.upgrades.defense) * dt;
+      else if (distance < e.r + p.r || (e.type === "boss" && distance < 100)) {
+        damagePlayer((e.type === "boss" ? 14 : 9) * dt);
+        state.core -= (e.type === "boss" ? 5 : 2) * dt;
+      }
       else {
         e.x += Math.cos(angle) * e.speed * 60 * dt;
         e.y += Math.sin(angle) * e.speed * 60 * dt;
@@ -779,6 +926,7 @@ function update(dt) {
       const bullet = state.bullets[j];
       if (
         bullet.source === "enemy" ||
+        bullet.hitEnemies.includes(enemy) ||
         Math.hypot(enemy.x - bullet.x, enemy.y - bullet.y) >= enemy.r + 4
       )
         continue;
@@ -794,7 +942,8 @@ function update(dt) {
         if (state.upgrades.element === "poison") enemy.poisoned = 2 + state.upgrades.elementPower;
         if (state.upgrades.element === "dark") explode(enemy.x, enemy.y, 30 + state.upgrades.elementPower * 8, 12, "dark");
       }
-      state.bullets.splice(j, 1);
+      bullet.hitEnemies.push(enemy);
+      if (!bullet.pierce) state.bullets.splice(j, 1);
       burst(bullet.x, bullet.y, enemy.color, 3);
       if (enemy.hp <= 0) {
         state.enemies.splice(i, 1);
@@ -813,7 +962,7 @@ function update(dt) {
   }
   state.bullets.forEach((b) => {
     if (b.source === "enemy" && Math.hypot(b.x - p.x, b.y - p.y) < p.r + 5) {
-      state.core -= 8 * (1 - state.upgrades.defense);
+      damagePlayer(8);
       b.life = 0;
       burst(b.x, b.y, "#ff5864", 5);
     }
@@ -824,6 +973,7 @@ function update(dt) {
     if (enemy.slow > 0) enemy.slow -= dt;
     if (enemy.poisoned > 0) enemy.poisoned -= dt;
   });
+  state.enemies.slice().filter((enemy) => enemy.hp <= 0).forEach(defeatEnemy);
   state.shockwaves.forEach((ring) => { ring.life -= dt * 3; ring.radius += (ring.maxRadius - ring.radius) * dt * 8; });
   state.shockwaves = state.shockwaves.filter((ring) => ring.life > 0);
   const magnetRadius = state.upgrades.magnet ? [0, 70, 125, 190][state.upgrades.magnet] : 20;
@@ -841,12 +991,13 @@ function update(dt) {
     q.life -= dt * 2;
   });
   state.particles = state.particles.filter((q) => q.life > 0);
-  if (state.core <= 0) endGame();
+  if (state.core <= 0 || state.playerHp <= 0) endGame();
   updateUI();
 }
 function draw() {
   const w = canvas.clientWidth,
     h = canvas.clientHeight;
+  const p = state.player;
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#0b1411";
   ctx.fillRect(0, 0, w, h);
@@ -872,6 +1023,17 @@ function draw() {
   ctx.arc(0, 0, 52, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
+  const playerBarWidth = 34;
+  const playerBarX = p.x - playerBarWidth / 2;
+  const playerBarY = p.y - 29;
+  ctx.fillStyle = "#1c2822";
+  ctx.fillRect(playerBarX, playerBarY, playerBarWidth, 3);
+  ctx.fillStyle = "#ff5864";
+  ctx.fillRect(playerBarX, playerBarY, playerBarWidth * Math.max(0, p ? state.playerHp / state.playerMaxHp : 0), 3);
+  ctx.fillStyle = "#1c2822";
+  ctx.fillRect(playerBarX, playerBarY - 5, playerBarWidth, 3);
+  ctx.fillStyle = "#6be4d8";
+  ctx.fillRect(playerBarX, playerBarY - 5, playerBarWidth * Math.max(0, state.shield / state.shieldMax), 3);
   state.coinsOnGround.forEach((coin) => {
     ctx.fillStyle = coin.value === 50 ? "#ffcf68" : "#ff8c57";
     ctx.shadowBlur = 10;
@@ -894,31 +1056,49 @@ function draw() {
     ctx.save();
     ctx.translate(t.x, t.y);
     ctx.rotate(t.angle);
-    ctx.fillStyle = "#c7f36b";
-    ctx.shadowBlur = 14;
-    ctx.shadowColor = "#c7f36b";
-    ctx.fillRect(-12, -12, 24, 24);
-    ctx.fillStyle = "#0b1411";
-    ctx.fillRect(0, -3, 19, 6);
+    const towerColor = t.type === "tesla" ? "#d58cff" : "#c7f36b";
+    ctx.fillStyle = towerColor;
+    ctx.shadowBlur = t.type === "tesla" ? 22 : 14;
+    ctx.shadowColor = towerColor;
+    if (t.type === "tesla") {
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, 0, Math.PI * 2);
+      ctx.strokeStyle = towerColor;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillRect(-3, -19, 6, 38);
+      ctx.fillRect(-19, -3, 38, 6);
+    } else {
+      ctx.fillRect(-12, -12, 24, 24);
+      ctx.fillStyle = "#0b1411";
+      ctx.fillRect(0, -3, 19, 6);
+    }
     ctx.restore();
   });
-  const p = state.player;
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.rotate(p.angle);
+  const profile = weaponProfiles[state.weapon] || weaponProfiles["Pulse Rifle"];
   ctx.shadowBlur = 18;
-  ctx.shadowColor = "#c7f36b";
-  ctx.fillStyle = "#c7f36b";
-  ctx.fillRect(-9, -8, 22, 16);
+  ctx.shadowColor = profile.color;
+  ctx.fillStyle = profile.color;
+  ctx.fillRect(-9, -8, state.weapon === "Flamethrower" ? 19 : 22, 16);
   ctx.fillStyle = "#e8f2e8";
-  ctx.fillRect(5, -3, 17, 6);
+  ctx.fillRect(5, -3, state.weapon === "Shotgun" ? 25 : state.weapon === "Railgun" ? 31 : 17, state.weapon === "Flamethrower" ? 9 : 6);
+  if (state.shield > 0) {
+    ctx.strokeStyle = "rgba(107,228,216,.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
   state.bullets.forEach((b) => {
     ctx.fillStyle = b.source === "enemy" ? "#ff5864" : "#c7f36b";
     ctx.shadowBlur = 10;
     ctx.shadowColor = ctx.fillStyle;
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, b.size || 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
   });
@@ -981,6 +1161,12 @@ function canvasPoint(event) {
   const rect = canvas.getBoundingClientRect();
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
+function updateAim(event) {
+  Object.assign(state.mouse, canvasPoint(event));
+}
+function stopFiring() {
+  state.mouse.down = false;
+}
 window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
   state.keys[key] = true;
@@ -992,21 +1178,64 @@ window.addEventListener(
   "keyup",
   (event) => (state.keys[event.key.toLowerCase()] = false),
 );
-canvas.addEventListener("mousemove", (event) =>
-  Object.assign(state.mouse, canvasPoint(event)),
-);
-canvas.addEventListener("mousedown", (event) => {
+canvas.addEventListener("pointermove", updateAim);
+canvas.addEventListener("pointerdown", (event) => {
   const point = canvasPoint(event);
   if (state.phase !== "running") return;
+  canvas.setPointerCapture?.(event.pointerId);
   if (state.buildMode) buildTower(point.x, point.y);
   else if (state.removeMode) removeTower(point.x, point.y);
   else state.mouse.down = true;
 });
-window.addEventListener("mouseup", () => (state.mouse.down = false));
+canvas.addEventListener("pointerup", stopFiring);
+canvas.addEventListener("pointercancel", stopFiring);
+window.addEventListener("pointerup", stopFiring);
+const joystick = $("joystick");
+const joystickKnob = joystick.querySelector("span");
+let joystickPointerId = null;
+function updateJoystick(event) {
+  const rect = joystick.getBoundingClientRect();
+  const maxDistance = rect.width * 0.31;
+  const x = event.clientX - (rect.left + rect.width / 2);
+  const y = event.clientY - (rect.top + rect.height / 2);
+  const distance = Math.min(maxDistance, Math.hypot(x, y));
+  const angle = Math.atan2(y, x);
+  const knobX = Math.cos(angle) * distance;
+  const knobY = Math.sin(angle) * distance;
+  state.touchMove.x = knobX / maxDistance;
+  state.touchMove.y = knobY / maxDistance;
+  joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+}
+function resetJoystick(event) {
+  if (event.pointerId !== joystickPointerId) return;
+  joystickPointerId = null;
+  state.touchMove.x = 0;
+  state.touchMove.y = 0;
+  joystickKnob.style.transform = "translate(0, 0)";
+}
+joystick.addEventListener("pointerdown", (event) => {
+  joystickPointerId = event.pointerId;
+  joystick.setPointerCapture?.(event.pointerId);
+  updateJoystick(event);
+});
+joystick.addEventListener("pointermove", (event) => {
+  if (event.pointerId === joystickPointerId) updateJoystick(event);
+});
+joystick.addEventListener("pointerup", resetJoystick);
+joystick.addEventListener("pointercancel", resetJoystick);
+const mobileFire = $("mobileFire");
+mobileFire.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  if (state.phase === "running") state.mouse.down = true;
+});
+mobileFire.addEventListener("pointerup", stopFiring);
+mobileFire.addEventListener("pointercancel", stopFiring);
+mobileFire.addEventListener("pointerleave", stopFiring);
 const towerButton = $("towerButton");
 const destroyTowerButton = $("destroyTowerButton");
 towerButton.onclick = toggleBuildMode;
 $("buyTowerButton").onclick = buyTower;
+$("buyTeslaButton").onclick = () => buyTower("tesla");
 destroyTowerButton.onclick = toggleRemoveMode;
 $("startButton").onclick = reset;
 $("restartButton").onclick = reset;
