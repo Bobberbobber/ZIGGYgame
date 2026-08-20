@@ -17,6 +17,9 @@ const state = {
   fireCooldown: 0,
   spawnTimer: 0,
   dashCooldown: 0,
+  grenadeCooldown: 0,
+  screenShake: 0,
+  muzzleFlash: 0,
   stamina: 5,
   sound: true,
   buildMode: false,
@@ -27,10 +30,14 @@ const state = {
   touchMove: { x: 0, y: 0 },
   player: { x: 0, y: 0, r: 13, angle: 0 },
   bullets: [],
+  grenades: [],
   coinsOnGround: [],
   enemies: [],
   towers: [],
   particles: [],
+  shockwaves: [],
+  weapon: "Pulse Rifle",
+  attackersHit: 0,
   upgrades: {
     damage: 18,
     fireRate: 240,
@@ -46,6 +53,14 @@ const state = {
     defense: 0,
     magnet: 0,
     turretLimit: 2,
+    grenadeRadius: 58,
+    grenadeDamage: 65,
+    grenadeCooldown: 2.5,
+    extraGrenade: 1,
+    clusterGrenade: false,
+    stickyGrenade: false,
+    element: null,
+    elementPower: 0,
   },
   structures: { sentry: true, tesla: false },
 };
@@ -145,6 +160,9 @@ function reset() {
     nextXp: 100,
     core: 100,
     fireCooldown: 0,
+    grenadeCooldown: 0,
+    screenShake: 0,
+    muzzleFlash: 0,
     spawnTimer: 0,
     dashCooldown: 0,
     stamina: 5,
@@ -152,10 +170,14 @@ function reset() {
     removeMode: false,
     bossSpawned: false,
     bullets: [],
+    grenades: [],
     coinsOnGround: [],
     enemies: [],
     towers: [],
     particles: [],
+    shockwaves: [],
+    weapon: "Pulse Rifle",
+    attackersHit: 0,
     structures: { sentry: true, tesla: false },
     upgrades: {
       damage: 18,
@@ -172,6 +194,14 @@ function reset() {
       defense: 0,
       magnet: 0,
       turretLimit: 2,
+      grenadeRadius: 58,
+      grenadeDamage: 65,
+      grenadeCooldown: 2.5,
+      extraGrenade: 1,
+      clusterGrenade: false,
+      stickyGrenade: false,
+      element: null,
+      elementPower: 0,
     },
   });
   state.player.x = canvas.clientWidth / 2;
@@ -316,6 +346,19 @@ const upgradePool = [
       state.upgrades.damage += 20;
     },
   ],
+  ["BLAST RADIUS", "Grenades explode across a wider area", "Common", () => (state.upgrades.grenadeRadius += 18)],
+  ["GRENADE DAMAGE", "Grenades deal +28 explosion damage", "Common", () => (state.upgrades.grenadeDamage += 28)],
+  ["FASTER COOLDOWN", "Throw grenades more often", "Uncommon", () => (state.upgrades.grenadeCooldown = Math.max(.7, state.upgrades.grenadeCooldown - .35))],
+  ["EXTRA GRENADE", "Throw two grenades per press", "Uncommon", () => (state.upgrades.extraGrenade = 2)],
+  ["CLUSTER GRENADE", "Detonations split into smaller blasts", "Rare", () => (state.upgrades.clusterGrenade = true)],
+  ["STICKY GRENADE", "Grenades attach to the first enemy hit", "Rare", () => (state.upgrades.stickyGrenade = true)],
+  ["ROCKET LAUNCHER", "Slow, explosive, high-damage shots", "Epic", () => (state.weapon = "Rocket Launcher")],
+  ["MINIGUN", "Very fast fire rate with light damage", "Epic", () => { state.weapon = "Minigun"; state.upgrades.fireRate += 360; state.upgrades.damage = Math.max(8, state.upgrades.damage - 4); }],
+  ["LASER RIFLE", "Continuous piercing beam", "Legendary", () => (state.weapon = "Laser Rifle")],
+  ["FIRE CORE", "Hits burn enemies over time", "Rare", () => { state.upgrades.element = "fire"; state.upgrades.elementPower++; }],
+  ["ICE CORE", "Hits slow enemies with frost", "Rare", () => { state.upgrades.element = "ice"; state.upgrades.elementPower++; }],
+  ["POISON CORE", "Poisoned enemies take 30% more damage", "Epic", () => { state.upgrades.element = "poison"; state.upgrades.elementPower++; }],
+  ["DARK CORE", "Hits trigger a violet area burst", "Legendary", () => { state.upgrades.element = "dark"; state.upgrades.elementPower++; }],
 ];
 function weightedRarity() {
   const boost = Math.min(18, state.level * 1.2);
@@ -416,6 +459,10 @@ function spawn(type, elite = false) {
     color: isElite ? "#ffcf68" : info[3],
     xp: info[4] * (isElite ? 2 : 1),
     elite: isElite,
+    displayHp: info[1] * (isElite ? 3 : 1),
+    burn: 0,
+    slow: 0,
+    poisoned: 0,
     shot: 2.5,
   });
 }
@@ -442,6 +489,27 @@ function burst(x, y, color, count = 8) {
       color,
     });
 }
+const weaponProfiles = {
+  "Pulse Rifle": { rate: 1, damage: 1, color: "#c7f36b", size: 3 },
+  "Rocket Launcher": { rate: .28, damage: 4, color: "#ff8c57", size: 6 },
+  Minigun: { rate: 3.4, damage: .45, color: "#c7f36b", size: 2 },
+  "Laser Rifle": { rate: 8, damage: .25, color: "#6be4d8", size: 2 },
+};
+function explode(x, y, radius, damage, source = "grenade") {
+  state.shockwaves.push({ x, y, radius: 8, maxRadius: radius, life: 1, color: source === "grenade" ? "#ff8c57" : "#d58cff" });
+  burst(x, y, source === "grenade" ? "#ff8c57" : "#d58cff", 22);
+  state.enemies.forEach((enemy) => {
+    if (Math.hypot(enemy.x - x, enemy.y - y) < radius) enemy.hp -= damage;
+  });
+  state.screenShake = Math.max(state.screenShake, .18);
+}
+function throwGrenade() {
+  if (state.grenadeCooldown > 0) return;
+  const count = state.upgrades.extraGrenade;
+  for (let i = 0; i < count; i++) state.grenades.push({ x: state.player.x, y: state.player.y, tx: state.mouse.x + (i ? 18 : 0), ty: state.mouse.y + (i ? 18 : 0), life: .75, fuse: 1.1, damage: state.upgrades.grenadeDamage });
+  state.grenadeCooldown = state.upgrades.grenadeCooldown;
+  sound("grenade");
+}
 function shoot(
   x = state.player.x,
   y = state.player.y,
@@ -449,7 +517,8 @@ function shoot(
   damage = state.upgrades.damage,
   source = "player",
 ) {
-  const count = source === "player" ? state.upgrades.multishot : 1;
+  const profile = weaponProfiles[state.weapon] || weaponProfiles["Pulse Rifle"];
+  const count = source === "player" ? (state.weapon === "Rocket Launcher" ? 1 : state.upgrades.multishot) : 1;
   for (let i = 0; i < count; i++) {
     const shotAngle = angle + (i - (count - 1) / 2) * 0.11;
     state.bullets.push({
@@ -460,12 +529,16 @@ function shoot(
       life: 1.1,
       damage,
       source,
+      color: source === "tower" ? "#6be4d8" : profile.color,
+      size: source === "tower" ? 2 : profile.size,
+      trail: [],
       homing:
         (source === "player" && state.upgrades.homing > 0) ||
         (source === "tower" && state.upgrades.towerHoming > 0),
     });
   }
-  sound("shot");
+  state.muzzleFlash = .12;
+  sound(source === "tower" ? "turret" : state.weapon === "Rocket Launcher" ? "rocket" : "shot");
 }
 function toggleBuildMode() {
   state.buildMode = !state.buildMode;
@@ -561,6 +634,9 @@ function update(dt) {
     p = state.player;
   state.time += dt;
   state.fireCooldown -= dt;
+  state.grenadeCooldown -= dt;
+  state.muzzleFlash = Math.max(0, state.muzzleFlash - dt);
+  state.screenShake = Math.max(0, state.screenShake - dt);
   state.spawnTimer -= dt;
   if (state.wave % 5 === 0 && !state.bossSpawned) {
     spawn("boss");
@@ -606,11 +682,28 @@ function update(dt) {
     burst(p.x, p.y, "#c7f36b", 10);
   }
   p.angle = Math.atan2(state.mouse.y - p.y, state.mouse.x - p.x);
+  const weaponRate = (weaponProfiles[state.weapon] || weaponProfiles["Pulse Rifle"]).rate;
   if (state.mouse.down && state.fireCooldown <= 0) {
     shoot();
-    state.fireCooldown = 60 / state.upgrades.fireRate;
+    state.fireCooldown = 60 / (state.upgrades.fireRate * weaponRate);
   }
+  state.grenades.forEach((grenade) => {
+    grenade.fuse -= dt;
+    const progress = Math.min(1, 1 - grenade.fuse / 1.1);
+    grenade.x += (grenade.tx - grenade.x) * Math.min(1, dt * 5);
+    grenade.y += (grenade.ty - grenade.y) * Math.min(1, dt * 5) - Math.sin(progress * Math.PI) * 90 * dt;
+    if (grenade.fuse <= 0) {
+      explode(grenade.x, grenade.y, state.upgrades.grenadeRadius, grenade.damage);
+      if (state.upgrades.clusterGrenade) {
+        for (let i = 0; i < 3; i++) explode(grenade.x + Math.cos(i * 2.1) * 28, grenade.y + Math.sin(i * 2.1) * 28, state.upgrades.grenadeRadius * .38, grenade.damage * .35, "cluster");
+      }
+      grenade.life = 0;
+    }
+  });
+  state.grenades = state.grenades.filter((grenade) => grenade.life > 0);
   state.bullets.forEach((b) => {
+    b.trail.push({ x: b.x, y: b.y, life: 1 });
+    b.trail = b.trail.filter((point) => (point.life -= dt * 5) > 0).slice(-6);
     if (b.homing) {
       const target = state.enemies.reduce(
         (nearest, enemy) =>
@@ -690,6 +783,17 @@ function update(dt) {
       )
         continue;
       enemy.hp -= bullet.damage;
+      state.attackersHit++;
+      sound("hit");
+      burst(bullet.x, bullet.y, bullet.color || enemy.color, 4);
+      state.screenShake = Math.max(state.screenShake, .035);
+      if (state.upgrades.element) {
+        enemy.element = state.upgrades.element;
+        if (state.upgrades.element === "fire") enemy.burn = 2 + state.upgrades.elementPower;
+        if (state.upgrades.element === "ice") enemy.slow = 2 + state.upgrades.elementPower;
+        if (state.upgrades.element === "poison") enemy.poisoned = 2 + state.upgrades.elementPower;
+        if (state.upgrades.element === "dark") explode(enemy.x, enemy.y, 30 + state.upgrades.elementPower * 8, 12, "dark");
+      }
       state.bullets.splice(j, 1);
       burst(bullet.x, bullet.y, enemy.color, 3);
       if (enemy.hp <= 0) {
@@ -714,6 +818,14 @@ function update(dt) {
       burst(b.x, b.y, "#ff5864", 5);
     }
   });
+  state.enemies.forEach((enemy) => {
+    enemy.displayHp += (enemy.hp - enemy.displayHp) * Math.min(1, dt * 9);
+    if (enemy.burn > 0) { enemy.burn -= dt; enemy.hp -= (4 + state.upgrades.elementPower * 2) * dt; }
+    if (enemy.slow > 0) enemy.slow -= dt;
+    if (enemy.poisoned > 0) enemy.poisoned -= dt;
+  });
+  state.shockwaves.forEach((ring) => { ring.life -= dt * 3; ring.radius += (ring.maxRadius - ring.radius) * dt * 8; });
+  state.shockwaves = state.shockwaves.filter((ring) => ring.life > 0);
   const magnetRadius = state.upgrades.magnet ? [0, 70, 125, 190][state.upgrades.magnet] : 20;
   state.coinsOnGround.forEach((coin) => {
     coin.life -= dt;
