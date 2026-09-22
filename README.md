@@ -10,11 +10,16 @@ Open `index.html` in a browser, or serve the folder with any static web server.
 - Mouse to aim
 - Click to fire
 - `Space` to dash
-- Press `T`, then click the arena to place up to two free auto-firing sentries. A third sentry can be unlocked and costs 100 coins. Sentries last 20 seconds and can be selected individually with `REMOVE TURRET`.
-- Enemies drop coin pickups: normal enemies drop 10, Elites drop 50. Walk over them or unlock three levels of Magnet to collect them from farther away.
-- After level 5, every tenth attacker is an Elite with triple health and slower movement. Level-ups pause the arena and offer three rarity-based upgrades.
+- `G` or `F` to throw a grenade at the cursor
+- `R` to buy a core patch (80 coins)
+- Press `B` or `T`, then click the arena to place a sentry. First two are free, extras cost 100 coins, Tesla costs 150 after you unlock Tesla Node. Turrets last 20 seconds (longer with Sentry Armor) and are capped until you expand the grid.
+- Enemies drop coin pickups: normal enemies drop 10, Elites drop 50, combos add extra. Walk over them or unlock Magnet to collect them from farther away.
+- Hostiles path to the reactor in the center. Shooters still hunt you. Splitters crack into shards. Bombers detonate on the core.
+- After wave 1, each wave rolls a protocol: Swarm, Armored, Fracture, Payload, Overdrive, or Eclipse. Every fifth wave is a Warden boss. Killing the Warden repairs the reactor.
+- Level-ups pause the arena and offer three rarity-based upgrades.
+- Field shop can patch the core or dump a shield cell mid-fight.
 - On mobile, use the touch joystick and `FIRE` button
 
 ## Threats
 
-Drone swarms are fast, brutes are durable, shooters fire back, and a Warden boss arrives every fifth wave. Boss defeats repair the reactor.
+Drone swarms are fast, brutes are durable, shooters fire back, splitters fracture on death, bombers suicide the core, and a Warden boss arrives every fifth wave.
